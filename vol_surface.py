@@ -8,13 +8,13 @@ from datetime import datetime
 from scipy.stats import norm
 
 # pull options data
-ticker = yf.Ticker("SPY")
+ticker= yf.Ticker("^VIX")
 spot = ticker.history(period="1d")["Close"].iloc[-1]
-print(f"SPY spot price: {spot:.2f}")
+print(f"VIX spot price: {spot:.2f}")
 
 today = datetime.now()
 
-expiries = ['2026-07-17', '2026-08-21', '2026-09-18', '2026-12-18', '2027-03-19']
+expiries = ['2026-07-22', '2026-10-21', '2026-11-18', '2026-07-15', '2027-02-17']
 
 all_data = []
 
