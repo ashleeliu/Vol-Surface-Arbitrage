@@ -88,3 +88,61 @@ plt.tight_layout()
 plt.savefig('vol_surface.png', dpi=150)
 plt.close()
 print("Surface saved as vol_surface.png")
+
+# arbitrage detection
+
+violations = []
+
+# calendar arbitrage
+for strike in df['strike'].unique():
+    subset = df[df['strike'] == strike].sort_values('T')
+    if len(subset) < 2:
+        continue
+    total_var = (subset['iv'].values ** 2) * subset['T'].values
+    for i in range(1, len(total_var)):
+        if total_var[i] <= total_var[i-1]:
+            violations.append({
+                'type': 'Calendar Arbitrage',
+                'strike': strike,
+                'expiry_1': subset['expiry'].iloc[i-1],
+                'expiry_2': subset['expiry'].iloc[i],
+                'detail': f"Total var decreased: {total_var[i-1]:.4f} → {total_var[i]:.4f}"
+            })
+
+# butterfly arbitrage
+for exp in df['expiry'].unique():
+    subset = df[df['expiry'] == exp].sort_values('strike')
+    if len(subset) < 3:
+        continue
+    prices = subset['mid'].values
+    strikes = subset['strike'].values
+    for i in range(1, len(prices) - 1):
+        dK1 = strikes[i] - strikes[i-1]
+        dK2 = strikes[i+1] - strikes[i]
+        butterfly = (prices[i-1]/dK1 - prices[i]*(1/dK1 + 1/dK2) + prices[i+1]/dK2)
+        if butterfly < 0:
+            violations.append({
+                'type': 'Butterfly Arbitrage',
+                'strike': strikes[i],
+                'expiry_1': exp,
+                'expiry_2': exp,
+                'detail': f"Negative butterfly spread: {butterfly:.4f}"
+            })
+
+# print results
+vdf = pd.DataFrame(violations)
+total = len(df)
+n_cal = len(vdf[vdf['type'] == 'Calendar Arbitrage']) if len(vdf) > 0 else 0
+n_but = len(vdf[vdf['type'] == 'Butterfly Arbitrage']) if len(vdf) > 0 else 0
+
+print(f"\n{'='*50}")
+print(f"ARBITRAGE DETECTION RESULTS")
+print(f"{'='*50}")
+print(f"Total contracts analyzed: {total}")
+print(f"Calendar arbitrage violations: {n_cal}")
+print(f"Butterfly arbitrage violations: {n_but}")
+print(f"Total violations: {n_cal + n_but}")
+print(f"Arbitrage-free rate: {(1 - (n_cal + n_but)/total)*100:.1f}%")
+print(f"\nSample violations:")
+if len(vdf) > 0:
+    print(vdf.head(10).to_string())
