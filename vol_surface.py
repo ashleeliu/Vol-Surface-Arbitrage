@@ -57,3 +57,34 @@ df = df[(df['iv'] > 0.01) & (df['iv'] < 2.0)]  # filter out bad IVs
 
 print(f"Successfully extracted IV for {len(df)} contracts")
 print(df[['strike', 'expiry', 'T', 'mid', 'iv']].head(10))
+
+from scipy.interpolate import griddata
+# plot volatility surface
+fig = plt.figure(figsize=(12, 7))
+ax = fig.add_subplot(111, projection='3d')
+
+strikes = df['strike'].values
+maturities = df['T'].values
+ivs = df['iv'].values
+
+# create grid for smooth surface
+strike_grid = np.linspace(strikes.min(), strikes.max(), 50)
+T_grid = np.linspace(maturities.min(), maturities.max(), 50)
+K_mesh, T_mesh = np.meshgrid(strike_grid, T_grid)
+
+# interpolate IV onto grid
+iv_mesh = griddata((strikes, maturities), ivs, (K_mesh, T_mesh), method='cubic')
+
+# plot
+surf = ax.plot_surface(K_mesh, T_mesh, iv_mesh, cmap='plasma', alpha=0.85)
+fig.colorbar(surf, ax=ax, shrink=0.5, label='Implied Volatility')
+
+ax.set_xlabel('Strike')
+ax.set_ylabel('Time to Expiry (Years)')
+ax.set_zlabel('Implied Volatility')
+ax.set_title('SPY Implied Volatility Surface')
+
+plt.tight_layout()
+plt.savefig('vol_surface.png', dpi=150)
+plt.close()
+print("Surface saved as vol_surface.png")
